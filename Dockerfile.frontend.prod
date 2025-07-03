@@ -15,14 +15,21 @@ COPY --from=build /app/build /usr/share/nginx/html
 COPY nginx/default.conf.template /etc/nginx/conf.d/default.conf.template
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 
+# Create a startup script that will handle the template substitution
+RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
+    echo 'envsubst "$DOMAIN $NGINX_BACKEND_UPSTREAM" < /etc/nginx/conf.d/default.conf.template > /tmp/default.conf' >> /docker-entrypoint.sh && \
+    echo 'cp /tmp/default.conf /etc/nginx/conf.d/default.conf' >> /docker-entrypoint.sh && \
+    echo 'nginx -g "pid /tmp/nginx.pid; daemon off;"' >> /docker-entrypoint.sh && \
+    chmod +x /docker-entrypoint.sh
+
 # Ensure cache directories exist and have proper ownership
-RUN mkdir -p /var/cache/nginx \
- && chown -R nginx:nginx /usr/share/nginx /var/cache/nginx /etc/nginx
+RUN mkdir -p /var/cache/nginx /tmp && \
+    chown -R nginx:nginx /usr/share/nginx /var/cache/nginx /etc/nginx /tmp
 
 # Drop to non-root user
 USER nginx
 
 EXPOSE 80
 
-# Use envsubst to render config before starting nginx
-CMD ["/bin/sh", "-c", "envsubst '$DOMAIN $NGINX_BACKEND_UPSTREAM' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'pid /tmp/nginx.pid; daemon off;'"]
+# Use our custom entrypoint script
+CMD ["/docker-entrypoint.sh"]
