@@ -18,22 +18,17 @@ COPY nginx/nginx.conf /etc/nginx/nginx.conf
 # Create the final config file as root (during build)
 RUN envsubst '$DOMAIN $NGINX_BACKEND_UPSTREAM' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
 
-# Ensure cache directories exist and have proper ownership
-RUN mkdir -p /var/cache/nginx /tmp && \
-    chown -R nginx:nginx /usr/share/nginx /var/cache/nginx /etc/nginx /tmp
-
-# Create necessary directories for nginx to run as non-root
+# Create all necessary directories and set permissions
 RUN mkdir -p /var/cache/nginx/client_temp \
     /var/cache/nginx/proxy_temp \
     /var/cache/nginx/fastcgi_temp \
     /var/cache/nginx/uwsgi_temp \
     /var/cache/nginx/scgi_temp \
     /var/run \
-    /var/log/nginx && \
-    chown -R nginx:nginx /var/cache/nginx /var/run /var/log/nginx
+    /var/log/nginx \
+    /tmp
 
-# Drop to non-root user
-USER nginx
+# Keep running as root for nginx (will be overridden by Kubernetes security context)
 
 EXPOSE 80
 
